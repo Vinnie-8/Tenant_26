@@ -50,10 +50,12 @@ class Property(models.Model):
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.name} - {self.address}"
+    #e808b9e08b37a9fa52a28905001b21ad4ca39ab6
+    

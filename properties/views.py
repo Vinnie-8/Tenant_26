@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
@@ -17,7 +17,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
-    permission_classes = [permissions.AllowAny, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]  # ✅ Fixed
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'address', 'city', 'description']
     ordering_fields = ['created_at', 'rent_amount', 'name']
@@ -25,14 +25,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        
-        # If user is authenticated, show all properties (with their own first)
         if user.is_authenticated:
             return Property.objects.filter(
                 Q(owner=user) | Q(status='available')
             ).distinct()
-        
-        # Anonymous users can only see available properties
         return Property.objects.filter(status='available')
 
     def get_serializer_class(self):
@@ -41,25 +37,22 @@ class PropertyViewSet(viewsets.ModelViewSet):
         return PropertySerializer
 
     def perform_create(self, serializer):
-        """Automatically set the owner to the logged-in user"""
         serializer.save(owner=self.request.user)
 
-    # Custom actions
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])  # ✅ Protect this
     def my_properties(self, request):
-        """Get only the current user's properties"""
         properties = Property.objects.filter(owner=request.user)
         serializer = self.get_serializer(properties, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])  # ✅ Protect this
     def mark_available(self, request, pk=None):
         property = self.get_object()
         property.status = 'available'
         property.save()
         return Response({'status': 'Property marked as available'})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])  # ✅ Protect this
     def mark_occupied(self, request, pk=None):
         property = self.get_object()
         property.status = 'occupied'
